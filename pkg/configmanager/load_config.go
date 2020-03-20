@@ -47,6 +47,9 @@ func RegisterConfigLoadFunc(f ConfigLoadFunc) {
 	configLoadFunc = f
 }
 
+// 默认的 config 加载方法
+// 可以通过上面 RegisterConfigLoadFunc 来替换
+// 然而目前却没有任何替换方法的使用
 func DefaultConfigLoad(path string) *v2.MOSNConfig {
 	log.Println("load config from : ", path)
 	content, err := ioutil.ReadFile(path)
@@ -57,6 +60,8 @@ func DefaultConfigLoad(path string) *v2.MOSNConfig {
 	// translate to lower case
 	err = json.Unmarshal(content, cfg)
 	if err != nil {
+		// 如果失败，fatalln 里直接 os.Exit 了
+		// 所以这里不返回 err 也是可以的
 		log.Fatalln("[config] [default load] json unmarshal config failed, ", err)
 	}
 	return cfg
@@ -64,6 +69,7 @@ func DefaultConfigLoad(path string) *v2.MOSNConfig {
 }
 
 // Load config file and parse
+// 这里难道就没有加载错误的可能性？
 func Load(path string) *v2.MOSNConfig {
 	configPath, _ = filepath.Abs(path)
 	if cfg := configLoadFunc(path); cfg != nil {

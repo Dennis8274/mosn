@@ -24,6 +24,10 @@ import (
 	"time"
 
 	"github.com/urfave/cli"
+
+	// 这些包进来只是为了调一下 init 函数，感觉有点丑。。。。---
+	// 看看怎么写优雅一些，或许可以像 v2ray 那样，通过问答式的交互方式，将需要使用的模块以
+	// import _ xxx 的形式引入进来，但这个引入文件应该是自动生成的
 	_ "mosn.io/mosn/pkg/buffer"
 	_ "mosn.io/mosn/pkg/filter/listener/originaldst"
 	_ "mosn.io/mosn/pkg/filter/network/connectionmanager"
@@ -67,6 +71,14 @@ func main() {
 	app.Usage = "MOSN is modular observable smart netstub."
 
 	//commands
+	// 对应 mosn 启动时的三个命令
+	/*
+	COMMANDS:
+	     start    start mosn proxy
+	     stop     stop mosn proxy
+	     reload   reconfiguration
+	*/
+	// 由用户输入 sub command 决定具体运行哪一个命令
 	app.Commands = []cli.Command{
 		cmdStart,
 		cmdStop,
@@ -74,6 +86,7 @@ func main() {
 	}
 
 	//action
+	// 默认的 action，是显示 help 信息
 	app.Action = func(c *cli.Context) error {
 		cli.ShowAppHelp(c)
 

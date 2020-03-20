@@ -21,6 +21,11 @@ import (
 	"time"
 )
 
+/*
+1. 这个文件里的内容都是和 defaultFeatureGate 相关的，完全可以把这些方法挂在同一个 struct 类型下
+要不看着这些方法非常奇怪
+2. defaultFeatureGate 完全可以使用 sync.Map，不需要自己锁来锁去
+*/
 var defaultFeatureGate *FeatureGate = NewFeatureGate()
 
 func Enabled(key Feature) bool {

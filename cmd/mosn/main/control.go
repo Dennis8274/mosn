@@ -63,19 +63,33 @@ var (
 			},
 		},
 		Action: func(c *cli.Context) error {
-			configPath := c.String("config")
-			serviceCluster := c.String("service-cluster")
-			serviceNode := c.String("service-node")
-			serviceMeta := c.StringSlice("service-meta")
+			// 各种配置的路径
+			// 这么多变量其实不是很优雅
+			// 配置繁琐了以后，应该是 structOpt 之类的更好用？
+			var (
+				configPath     = c.String("config") // 这里的 string 和上面是对应的，感觉还是挺容易拼错的
+				serviceCluster = c.String("service-cluster")
+				serviceNode    = c.String("service-node")
+				serviceMeta    = c.StringSlice("service-meta")
+			)
 
+			// 这个 config 文件和 v2ray 的类似
+			// 因此也和 v2ray 有一样的配置复杂的问题
+			// 可以改成问答式的配置流程
 			conf := configmanager.Load(configPath)
+
 			// set feature gates
+			// feature gate 是动态开关闭功能的一个特性
+			// feature1=true,feature2=false
+			// 设计的比较奇怪
 			err := featuregate.Set(c.String("feature-gates"))
 			if err != nil {
 				log.StartLogger.Infof("[mosn] [start] parse feature-gates flag fail : %+v", err)
 				os.Exit(1)
 			}
+
 			// start pprof
+			// 配置了 pprof 的话会开启
 			if conf.Debug.StartDebug {
 				port := 9090 //default use 9090
 				if conf.Debug.Port != 0 {
@@ -89,10 +103,14 @@ var (
 			// set mosn metrics flush
 			metrics.FlushMosnMetrics = true
 			// set version and go version
+			// 这个 version 感觉也应该写在一个专门的文件而不是代码里
 			metrics.SetVersion(Version)
 			metrics.SetGoVersion(runtime.Version())
+
+			// TODO, what is xds
 			types.InitXdsFlags(serviceCluster, serviceNode, serviceMeta)
 
+			// 实际的启动函数
 			mosn.Start(conf)
 			return nil
 		},

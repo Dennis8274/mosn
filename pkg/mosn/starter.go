@@ -71,6 +71,7 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 	if err != nil {
 		log.StartLogger.Fatalf("[mosn] [NewMosn] getInheritListeners failed, exit")
 	}
+
 	if reconfigure != nil {
 		log.StartLogger.Infof("[mosn] [NewMosn] active reconfiguring")
 		// set Mosn Active_Reconfiguring
