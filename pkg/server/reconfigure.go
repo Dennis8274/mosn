@@ -92,15 +92,21 @@ func reconfigure(start bool) {
 	}
 
 	// stop other services
+	// 停止数据面服务
 	store.StopService()
 
+	// 这个等待有点尴尬
 	// Wait for new mosn start
 	time.Sleep(3 * time.Second)
 
 	// Stop accepting requests
+	// 停止接收新请求
+	// 新 mosn 的 listener 都已经就绪了，所以这里没关系
 	StopAccept()
 
 	// Wait for all connections to be finished
+	// 开始迁移存量长连接
+	// 又是一个不处理返回值的函数，没必要返回 error
 	WaitConnectionsDone(GracefulTimeout)
 
 	log.DefaultLogger.Infof("[server] [reconfigure] process %d gracefully shutdown", os.Getpid())

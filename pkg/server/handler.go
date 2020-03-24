@@ -749,12 +749,19 @@ func GetInheritListeners() ([]net.Listener, net.Conn, error) {
 		}
 	}()
 
+	// is reconfigure 是连接到 mosn path 的 reconfig.sock 上
+	// 如果文件存在，老 mosn 会往这个 reconfig.sock 连上来的连接里发一个字节数据
+	// 读取成功后则说明是 reconfigure 逻辑
+	// 否则说明是启动新 mosn，不需要继承老的连接
 	if !isReconfigure() {
 		return nil, nil, nil
 	}
 
+	// 这里 unlink 是把 mosn path 下的 listen sock 给删了
 	syscall.Unlink(types.TransferListenDomainSocket)
 
+	// 监听 unix 套接字
+	// mosn dir + listen.sock
 	l, err := net.Listen("unix", types.TransferListenDomainSocket)
 	if err != nil {
 		log.StartLogger.Errorf("[server] InheritListeners net listen error: %v", err)
@@ -765,7 +772,24 @@ func GetInheritListeners() ([]net.Listener, net.Conn, error) {
 	log.StartLogger.Infof("[server] Get InheritListeners start")
 
 	ul := l.(*net.UnixListener)
+	// 设置超时 10s
 	ul.SetDeadline(time.Now().Add(time.Second * 10))
+
+	// 这里是一定能 accept 的，因为老 mosn 在后台的一个 goroutine 里执行了
+	// start reconfigure domain socket
+	// utils.GoWithRecover(func() {
+	//	server.ReconfigureHandler()
+	// }, nil)
+	// 然后该 ReconfigureHandler 中，
+	// 在收到 reconfig.sock 的连接请求并 accept 之后，先往 reconfig.sock 里写一个字节
+	// 然后执行 reconfigure(false)
+	// 	if notify, err = sendInheritListeners(); err != nil {
+	//		return
+	//	}
+	// 在 sendInheritListeners 逻辑里
+	// 会把老 mosn 的所有连接作为文件内容打包成 msg 发送给新 mosn
+	// 然后老 mosn 从 listen.sock 中读取新 mosn 响应的一个字节
+	// 成功后则等待所有
 	uc, err := ul.AcceptUnix()
 	if err != nil {
 		log.StartLogger.Errorf("[server] InheritListeners Accept error :%v", err)

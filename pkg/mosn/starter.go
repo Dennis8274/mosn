@@ -189,19 +189,24 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 
 // beforeStart prepares some actions before mosn start proxy listener
 func (m *Mosn) beforeStart() {
+	// 1. 开启 admin api
 	// start adminApi
 	m.adminServer = admin.Server{}
 	m.adminServer.Start(m.config)
 
-	// SetTransferTimeout
+	// 2. 设置 graceful 超时
+	//SetTransferTimeout
 	network.SetTransferTimeout(server.GracefulTimeout)
 
+	// active reconfiguring，表示热更新配置
 	if store.GetMosnState() == store.Active_Reconfiguring {
 		// start other services
 		if err := store.StartService(m.inheritListeners); err != nil {
 			log.StartLogger.Fatalf("[mosn] [NewMosn] start service failed: %v,  exit", err)
 		}
 
+		// 通知老的 mosn，当前新 mosn 已经启动完成了
+		// 所以可以停止 listen，并且开始移交存量的长连接了
 		// notify old mosn to transfer connection
 		if _, err := m.reconfigure.Write([]byte{0}); err != nil {
 			log.StartLogger.Fatalf("[mosn] [NewMosn] graceful failed, exit")
@@ -210,10 +215,12 @@ func (m *Mosn) beforeStart() {
 		m.reconfigure.Close()
 
 		// transfer old mosn connections
+		// 移交旧的 mosn 连接
 		utils.GoWithRecover(func() {
 			network.TransferServer(m.servers[0].Handler())
 		}, nil)
 	} else {
+		// 否则的话就说明是开启新的 mosn 服务
 		// start other services
 		if err := store.StartService(nil); err != nil {
 			log.StartLogger.Fatalf("[mosn] [NewMosn] start service failed: %v,  exit", err)
@@ -243,14 +250,21 @@ func (m *Mosn) beforeStart() {
 // Start mosn's server
 func (m *Mosn) Start() {
 	m.wg.Add(1)
+
 	// Start XDS if configured
 	log.StartLogger.Infof("mosn start xds client")
 	m.xdsClient = &xds.Client{}
 	utils.GoWithRecover(func() {
+		// 既然错误不处理，那其实 Start 函数就没有必要返回 error
 		m.xdsClient.Start(m.config)
 	}, nil)
+	// End Start XDS
+
 	// start mosn feature
+	// feature gate 是用来开启、关闭一些功能的
+	// 主要为了解决在非必要时，关闭那些较为消耗性能的操作
 	featuregate.StartInit()
+
 	// TODO: remove it
 	//parse service registry info
 	log.StartLogger.Infof("mosn parse registry info")

@@ -145,6 +145,9 @@ func StopService() {
 			log.DefaultLogger.Infof("[admin store] [stop service] %s", s.name)
 		}, nil)
 	}
+
+	// 意义不明？
+	// 可能是 java 的习惯吧
 	services = services[:0]
 	listeners = listeners[:0]
 	log.DefaultLogger.Infof("[admin store] [stop service] clear all stored services")

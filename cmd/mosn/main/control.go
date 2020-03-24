@@ -108,6 +108,7 @@ var (
 			metrics.SetGoVersion(runtime.Version())
 
 			// TODO, what is xds
+			// https://zhaohuabing.com/post/2018-09-25-istio-traffic-management-impl-intro/#xds
 			types.InitXdsFlags(serviceCluster, serviceNode, serviceMeta)
 
 			// 实际的启动函数
