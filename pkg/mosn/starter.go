@@ -173,7 +173,7 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 				if deprecatedRouter.RouterConfigName != "" {
 					routerManager.AddOrUpdateRouters(deprecatedRouter)
 				}
-				if _, err := srv.AddListener(lc, true, true, true); err != nil {
+				if _, err := srv.AddListener(lc); err != nil {
 					log.StartLogger.Fatalf("[mosn] [NewMosn] AddListener error:%s", err.Error())
 				}
 			}
