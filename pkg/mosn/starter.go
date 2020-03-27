@@ -18,6 +18,7 @@
 package mosn
 
 import (
+	"mosn.io/mosn/pkg/upstream/cluster"
 	"net"
 	"sync"
 
@@ -37,7 +38,6 @@ import (
 	"mosn.io/mosn/pkg/server/keeper"
 	"mosn.io/mosn/pkg/trace"
 	"mosn.io/mosn/pkg/types"
-	"mosn.io/mosn/pkg/upstream/cluster"
 	"mosn.io/mosn/pkg/xds"
 	"mosn.io/pkg/utils"
 )
@@ -86,55 +86,58 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 		}
 	}
 
+	// 初始化 metrics 相关
 	initializeMetrics(c.Metrics)
 
-	m := &Mosn{
-		config:           c,
-		wg:               sync.WaitGroup{},
-		inheritListeners: inheritListeners,
-		reconfigure:      reconfigure,
-	}
+	/*
+		// File means start from config file
+		// Xds means start from xds
+		// Mix means start both from file and Xds
+	*/
 	mode := c.Mode()
 
 	if mode == v2.Xds {
-		servers := make([]v2.ServerConfig, 0, 1)
-		server := v2.ServerConfig{
+		serverConfigs := make([]v2.ServerConfig, 0, 1)
+		serverConfig := v2.ServerConfig{
 			DefaultLogPath:  "stdout",
 			DefaultLogLevel: "INFO",
 		}
-		servers = append(servers, server)
-		c.Servers = servers
+		serverConfigs = append(serverConfigs, serverConfig)
+		c.Servers = serverConfigs
 	} else {
+		// we need cluster info for non-xds mode
+		// 非 xds 启动，需要有 cluster 和 clustermanager 信息
 		if c.ClusterManager.Clusters == nil || len(c.ClusterManager.Clusters) == 0 {
 			if !c.ClusterManager.AutoDiscovery {
 				log.StartLogger.Fatalf("[mosn] [NewMosn] no cluster found and cluster manager doesn't support auto discovery")
 			}
-
 		}
 	}
 
-	srvNum := len(c.Servers)
-
-	if srvNum == 0 {
+	switch {
+	case len(c.Servers) == 1:
+		// only this can be true
+	case len(c.Servers) == 0:
 		log.StartLogger.Fatalf("[mosn] [NewMosn] no server found")
-	} else if srvNum > 1 {
-		log.StartLogger.Fatalf("[mosn] [NewMosn] multiple server not supported yet, got %d", srvNum)
+	default:
+		log.StartLogger.Fatalf("[mosn] [NewMosn] multiple server not supported yet, got %d", len(c.Servers))
 	}
-
-	//cluster manager filter
-	cmf := &clusterManagerFilter{}
 
 	// parse cluster all in one
 	clusters, clusterMap := configmanager.ParseClusterConfig(c.ClusterManager.Clusters)
+	var cm types.ClusterManager
 	// create cluster manager
 	if mode == v2.Xds {
-		m.clustermanager = cluster.NewClusterManagerSingleton(nil, nil)
+		cm = cluster.NewClusterManagerSingleton(nil, nil)
 	} else {
-		m.clustermanager = cluster.NewClusterManagerSingleton(clusters, clusterMap)
+		cm = cluster.NewClusterManagerSingleton(clusters, clusterMap)
 	}
 
-	// initialize the routerManager
-	m.routerManager = router.NewRouterManager()
+	var (
+		routerManager = router.NewRouterManager()
+		serverList []server.Server
+		cmf = &clusterManagerFilter{}
+	)
 
 	for _, serverConfig := range c.Servers {
 		//1. server config prepare
@@ -149,10 +152,10 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 
 		var srv server.Server
 		if mode == v2.Xds {
-			srv = server.NewServer(sc, cmf, m.clustermanager)
+			srv = server.NewServer(sc, cmf, cm)
 		} else {
 			//initialize server instance
-			srv = server.NewServer(sc, cmf, m.clustermanager)
+			srv = server.NewServer(sc, cmf, cm)
 
 			//add listener
 			if serverConfig.Listeners == nil || len(serverConfig.Listeners) == 0 {
@@ -168,7 +171,7 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 					log.StartLogger.Fatalf("[mosn] [NewMosn] compatible router: %v", err)
 				}
 				if deprecatedRouter.RouterConfigName != "" {
-					m.routerManager.AddOrUpdateRouters(deprecatedRouter)
+					routerManager.AddOrUpdateRouters(deprecatedRouter)
 				}
 				if _, err := srv.AddListener(lc, true, true, true); err != nil {
 					log.StartLogger.Fatalf("[mosn] [NewMosn] AddListener error:%s", err.Error())
@@ -177,14 +180,23 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 			// Add Router Config
 			for _, routerConfig := range serverConfig.Routers {
 				if routerConfig.RouterConfigName != "" {
-					m.routerManager.AddOrUpdateRouters(routerConfig)
+					routerManager.AddOrUpdateRouters(routerConfig)
 				}
 			}
 		}
-		m.servers = append(m.servers, srv)
+		serverList = append(serverList, srv)
 	}
 
-	return m
+	return &Mosn{
+		config:           c,
+		wg:               sync.WaitGroup{},
+		inheritListeners: inheritListeners,
+		reconfigure:      reconfigure,
+		clustermanager:   cm,
+		routerManager:    routerManager,
+		servers:          serverList,
+	}
+
 }
 
 // beforeStart prepares some actions before mosn start proxy listener
@@ -251,7 +263,7 @@ func (m *Mosn) beforeStart() {
 func (m *Mosn) Start() {
 	m.wg.Add(1)
 
-	// Start XDS if configured
+	// 1. Start XDS if configured
 	log.StartLogger.Infof("mosn start xds client")
 	m.xdsClient = &xds.Client{}
 	utils.GoWithRecover(func() {
@@ -260,21 +272,21 @@ func (m *Mosn) Start() {
 	}, nil)
 	// End Start XDS
 
-	// start mosn feature
+	// 2. start mosn feature
 	// feature gate 是用来开启、关闭一些功能的
 	// 主要为了解决在非必要时，关闭那些较为消耗性能的操作
 	featuregate.StartInit()
 
 	// TODO: remove it
-	//parse service registry info
+	// 3. parse service registry info
 	log.StartLogger.Infof("mosn parse registry info")
 	configmanager.ParseServiceRegistry(m.config.ServiceRegistry)
 
-	// beforestart starts transfer connection and non-proxy listeners
+	// 4. beforestart starts transfer connection and non-proxy listeners
 	log.StartLogger.Infof("mosn prepare for start")
 	m.beforeStart()
 
-	// start mosn server
+	// 5. start mosn server
 	log.StartLogger.Infof("mosn start server")
 	for _, srv := range m.servers {
 
@@ -285,6 +297,7 @@ func (m *Mosn) Start() {
 		// },
 		srv := srv
 
+		// 虽然这里是 for 循环，但实际上这就俩 server。。。。。
 		utils.GoWithRecover(func() {
 			srv.Start()
 		}, nil)
