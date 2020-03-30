@@ -135,8 +135,8 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 
 	var (
 		routerManager = router.NewRouterManager()
-		serverList []server.Server
-		cmf = &clusterManagerFilter{}
+		serverList    []server.Server
+		cmf           = &clusterManagerFilter{}
 	)
 
 	for _, serverConfig := range c.Servers {
@@ -150,15 +150,15 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 		// init default log
 		server.InitDefaultLogger(sc)
 
-		var srv server.Server
 		if mode == v2.Xds {
-			srv = server.NewServer(sc, cmf, cm)
+			srv := server.NewServer(sc, cmf, cm)
+			serverList = append(serverList, srv)
 		} else {
 			//initialize server instance
-			srv = server.NewServer(sc, cmf, cm)
+			srv := server.NewServer(sc, cmf, cm)
 
 			//add listener
-			if serverConfig.Listeners == nil || len(serverConfig.Listeners) == 0 {
+			if len(serverConfig.Listeners) == 0 {
 				log.StartLogger.Fatalf("[mosn] [NewMosn] no listener found")
 			}
 
@@ -177,14 +177,15 @@ func NewMosn(c *v2.MOSNConfig) *Mosn {
 					log.StartLogger.Fatalf("[mosn] [NewMosn] AddListener error:%s", err.Error())
 				}
 			}
+
 			// Add Router Config
 			for _, routerConfig := range serverConfig.Routers {
 				if routerConfig.RouterConfigName != "" {
 					routerManager.AddOrUpdateRouters(routerConfig)
 				}
 			}
+			serverList = append(serverList, srv)
 		}
-		serverList = append(serverList, srv)
 	}
 
 	return &Mosn{

@@ -101,13 +101,7 @@ func (srv *server) Start() {
 	// TODO: handle main thread panic @wugou
 
 	srv.handler.StartListeners(nil)
-
-	for {
-		select {
-		case <-srv.stopChan:
-			return
-		}
-	}
+	<-srv.stopChan
 }
 
 func (srv *server) Restart() {

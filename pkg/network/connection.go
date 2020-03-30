@@ -253,6 +253,10 @@ func (c *connection) startRWLoop(lctx context.Context) {
 		c.Close(api.NoFlush, api.LocalClose)
 	})
 
+	// by 元总
+	// 本机对外发起的连接可能较多：几千或上万条
+	// 这些连接，如果每个 conn 都有一个 read g 和 write g 的话，成本太高
+	// 而本地到 mosn 的连接一般不会太多，所以这里的逻辑是，本地的连接才会启动 read g 和 write g
 	if c.checkUseWriteLoop() {
 		c.useWriteLoop = true
 		utils.GoWithRecover(func() {
@@ -452,6 +456,8 @@ func (c *connection) doRead() (err error) {
 			c.id, c.rawConnection.LocalAddr(), c.RemoteAddr())
 	}
 
+	// 连接创建的时候会有一堆回调函数，基本都是些统计函数
+	// 这里顺序调用一下
 	for _, cb := range c.bytesReadCallbacks {
 		cb(uint64(bytesRead))
 	}

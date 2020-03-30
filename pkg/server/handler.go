@@ -463,16 +463,20 @@ func (al *activeListener) OnNewConnection(ctx context.Context, conn api.Connecti
 	//Register Proxy's Filter
 	filterManager := conn.FilterManager()
 	for _, nfcf := range al.networkFiltersFactories {
+		// filterManager.AddReadFilter，具体哪个 filter 是从配置中生成的
 		nfcf.CreateFilterChain(ctx, filterManager)
 	}
 	filterManager.InitializeReadFilters()
 
+	// 上面 CreateFilterChain 给 filterManager 加过 filter 了
+	// 如果一个 filter 都没有，那说明 al.networkFiltersFactories 是空
 	if len(filterManager.ListReadFilter()) == 0 &&
 		len(filterManager.ListWriteFilters()) == 0 {
 		// no filter found, close connection
 		conn.Close(api.NoFlush, api.LocalClose)
 		return
 	}
+
 	ac := newActiveConnection(al, conn)
 
 	al.connsMux.Lock()
@@ -655,14 +659,16 @@ func newActiveConnection(listener *activeListener, conn api.Connection) *activeC
 
 	ac.conn.SetNoDelay(true)
 	ac.conn.AddConnectionEventListener(ac)
-	ac.conn.AddBytesReadListener(func(bytesRead uint64) {
 
+	// 读到数据时的回调
+	ac.conn.AddBytesReadListener(func(bytesRead uint64) {
 		if bytesRead > 0 {
 			listener.stats.DownstreamBytesReadTotal.Inc(int64(bytesRead))
 		}
 	})
-	ac.conn.AddBytesSentListener(func(bytesSent uint64) {
 
+	// 发送数据时的回调
+	ac.conn.AddBytesSentListener(func(bytesSent uint64) {
 		if bytesSent > 0 {
 			listener.stats.DownstreamBytesWriteTotal.Inc(int64(bytesSent))
 		}
