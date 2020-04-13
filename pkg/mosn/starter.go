@@ -18,6 +18,7 @@
 package mosn
 
 import (
+	"mosn.io/mosn/pkg/upstream/servicediscovery"
 	"net"
 	"sync"
 
@@ -59,6 +60,7 @@ type Mosn struct {
 // NewMosn
 // Create server from mosn config
 func NewMosn(c *v2.MOSNConfig) *Mosn {
+	servicediscovery.Init()
 	initializeDefaultPath(configmanager.GetConfigPath())
 	initializePidFile(c.Pid)
 	initializeTracing(c.Tracing)
