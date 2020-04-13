@@ -18,11 +18,12 @@ package servicediscovery
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/go-chi/chi"
+	"github.com/mosn/binding"
 	dubboregistry "github.com/mosn/registry/dubbo"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
+	dubbologger "github.com/mosn/registry/dubbo/common/logger"
 	"github.com/mosn/registry/dubbo/remoting"
 	zkreg "github.com/mosn/registry/dubbo/zookeeper"
 	"mosn.io/mosn/pkg/log"
@@ -40,6 +41,7 @@ func Init() {
 
 	r.Post("/pub", publish)
 	r.Post("/unpub", unpublish)
+	dubbologger.InitLog("./dubbogo.log")
 
 	// FIXME make port configurable
 	utils.GoWithRecover(func(){
@@ -157,6 +159,8 @@ func publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("### yeah, passed", req)
+
 	var (
 		dubboPathInRegistry = fmt.Sprintf("dubbo://127.0.0.1:20000/%v.%v", req.Interface, req.Method)
 		registryPath = fmt.Sprintf("registry://%v", req.RegistryAddr)
@@ -205,6 +209,7 @@ func unpublish(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("unpublish fail"))
 		return
 	}
+
 	var (
 		dubboPathInRegistry = fmt.Sprintf("/dubbo/%v.%v/providers", req.Interface, req.Method)
 		registryPath = fmt.Sprintf("registry://%v", req.RegistryAddr)
