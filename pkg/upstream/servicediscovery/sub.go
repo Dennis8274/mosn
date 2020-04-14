@@ -10,28 +10,6 @@ import (
 	"time"
 )
 
-// unsubscribe a service from registry
-func unsubscribe(w http.ResponseWriter, r *http.Request) {
-	// TODO fetch this cluster config from registry
-	// TODO convert it to v2.Cluster
-	/*err := clusterAdapter.GetClusterMngAdapterInstance().AddOrUpdatePrimaryCluster(v2.Cluster{})
-	if err != nil {
-		_, _ = w.Write([]byte("json failed"))
-	}
-	*/
-	// todo
-	// 1. build url, then
-	// 2. call dubbo-go service subscribe
-	// 3. register current service as dependent service consumers
-	var req subReq
-	err := bind(r, &req)
-	if err != nil {
-		_, _ = w.Write([]byte("subscribe fail"))
-		return
-	}
-
-	_, _ = w.Write([]byte("subscribe succeed"))
-}
 
 // subscribe a service from registry
 func subscribe(w http.ResponseWriter, r *http.Request) {
@@ -68,9 +46,8 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reg, err := zkreg.NewZkRegistry(&registryURL)
-
 	if err != nil {
-		_, _ = w.Write([]byte("sub fail" + err.Error()))
+		response(w, resp{ Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
 	}
 
@@ -101,6 +78,30 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	go reg.Subscribe(&dubboURL, listener{})
 
 	response(w, resp{Errno: succ, ErrMsg: "subscribe success"})
+}
+
+
+// unsubscribe a service from registry
+func unsubscribe(w http.ResponseWriter, r *http.Request) {
+	// TODO fetch this cluster config from registry
+	// TODO convert it to v2.Cluster
+	/*err := clusterAdapter.GetClusterMngAdapterInstance().AddOrUpdatePrimaryCluster(v2.Cluster{})
+	if err != nil {
+		_, _ = w.Write([]byte("json failed"))
+	}
+	*/
+	// todo
+	// 1. build url, then
+	// 2. call dubbo-go service subscribe
+	// 3. register current service as dependent service consumers
+	var req subReq
+	err := bind(r, &req)
+	if err != nil {
+		_, _ = w.Write([]byte("subscribe fail"))
+		return
+	}
+
+	_, _ = w.Write([]byte("subscribe succeed"))
 }
 
 /*

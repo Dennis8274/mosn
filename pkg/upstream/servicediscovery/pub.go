@@ -1,7 +1,6 @@
 package servicediscovery
 
 import (
-	"encoding/json"
 	"fmt"
 	dubboregistry "github.com/mosn/registry/dubbo"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
