@@ -31,9 +31,9 @@ func Init( /*port string, dubboLogPath string*/ ) {
 	r := chi.NewRouter()
 	r.Post("/sub", subscribe)
 	r.Post("/unsub", unsubscribe)
-
 	r.Post("/pub", publish)
 	r.Post("/unpub", unpublish)
+
 	_ = dubbologger.InitLog("./dubbogo.log")
 
 	// FIXME make port configurable

@@ -22,15 +22,6 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 在收到 notify 之后，调用 TriggerClusterAddOrUpdate 等等接口
-	// err := clusterAdapter.GetClusterMngAdapterInstance().AddOrUpdatePrimaryCluster(v2.Cluster{})
-	/*
-		err = clusterAdapter.GetClusterMngAdapterInstance().TriggerClusterDel(req.Services...)
-		if err != nil {
-			_, _ = w.Write([]byte("json failed"))
-		}
-	*/
-
 	var registryPath = registryPathTpl.ExecuteString(map[string]interface{}{
 		"addr": req.Registry.Addr,
 	})
@@ -100,6 +91,7 @@ func unsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globalRegistry.Destroy()
+	// TODO, remove cluster info in cluster manager
 	response(w, resp{Errno: succ, ErrMsg: "unsubscribe success"})
 }
 
