@@ -51,7 +51,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	*/
 	var (
 		dubboPathInRegistry = fmt.Sprintf("dubbo://127.0.0.1:20000/%v.%v", req.Interface, req.Method)
-		registryPath = fmt.Sprintf("registry://%v", req.RegistryAddr)
+		registryPath        = fmt.Sprintf("registry://%v", req.RegistryAddr)
 	)
 
 	registryURL, err := dubbocommon.NewURL(registryPath,
@@ -62,7 +62,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("#####",registryURL)
+	fmt.Println("#####", registryURL)
 	reg, err := zkreg.NewZkRegistry(&registryURL)
 
 	if err != nil {
@@ -87,9 +87,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 
-	var notifyListener = listener{}
-	go reg.Subscribe(&url, notifyListener)
+	go reg.Subscribe(&url, listener{})
 
 	_, _ = w.Write([]byte("unsubscribe succeed"))
 }
-

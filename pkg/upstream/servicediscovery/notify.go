@@ -7,7 +7,7 @@ import (
 )
 
 // listener listens for registry subscription data change
-type listener struct {}
+type listener struct{}
 
 func (l listener) Notify(event *dubboregistry.ServiceEvent) {
 	fmt.Println(event.Action, event.Service, event.String())
@@ -23,4 +23,3 @@ func (l listener) Notify(event *dubboregistry.ServiceEvent) {
 		fmt.Println("not supported")
 	}
 }
-

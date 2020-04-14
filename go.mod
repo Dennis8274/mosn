@@ -32,6 +32,7 @@ require (
 	github.com/tjfoc/gmsm v0.0.0-20190220013605-bfb01827afcb // indirect
 	github.com/urfave/cli v1.20.0
 	github.com/valyala/fasthttp v1.2.0
+	github.com/valyala/fasttemplate v1.1.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20200222125558-5a598a2470a0
 	golang.org/x/sys v0.0.0-20200116001909-b77594299b42

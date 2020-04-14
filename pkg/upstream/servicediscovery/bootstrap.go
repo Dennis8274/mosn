@@ -27,7 +27,7 @@ import (
 
 // init the http api for application when application bootstrap
 // for sub/pub
-func Init(port string) {
+func Init( /*port string, dubboLogPath string*/ ) {
 	r := chi.NewRouter()
 	r.Post("/sub", subscribe)
 	r.Post("/unsub", unsubscribe)
@@ -37,13 +37,12 @@ func Init(port string) {
 	dubbologger.InitLog("./dubbogo.log")
 
 	// FIXME make port configurable
-	utils.GoWithRecover(func(){
+	utils.GoWithRecover(func() {
 		if err := http.ListenAndServe(":22222", r); err != nil {
 			log.DefaultLogger.Infof("auto write config when updated")
 		}
 	}, nil)
 }
-
 
 // bind the struct content from http.Request body/uri
 func bind(r *http.Request, data interface{}) error {
