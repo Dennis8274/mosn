@@ -7,39 +7,11 @@ import (
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
 	zkreg "github.com/mosn/registry/dubbo/zookeeper"
-	"github.com/valyala/fasttemplate"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
-
-var (
-	dubboPathTpl    = fasttemplate.New("dubbo://{{ip}}:{{port}}/{{interface}}.{{service_name}}", "{{", "}}")
-	registryPathTpl = fasttemplate.New("registry://{{addr}}", "{{", "}}")
-)
-
-const (
-	succ = iota
-	fail
-)
-
-type resp struct {
-	Errno  int    `json:"errno"`
-	ErrMsg string `json:"err_msg"`
-}
-
-func response(w http.ResponseWriter, respBody interface{}) {
-	bodyBytes, err := json.Marshal(respBody)
-	if err != nil {
-		_, _ = w.Write([]byte("response marshal failed, err: " + err.Error()))
-	}
-
-	_, _ = w.Write(bodyBytes)
-}
-
-func getDubboRoot(interfaceName string, serviceName string) string { return "" }
 
 // publish a service to registry
 func publish(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +27,6 @@ func publish(w http.ResponseWriter, r *http.Request) {
 		"addr": req.Registry.Addr,
 	})
 	registryURL, err := dubbocommon.NewURL(registryPath,
-		dubbocommon.WithParamsValue(dubboconsts.ROLE_KEY, strconv.Itoa(dubbocommon.PROVIDER)),
 		dubbocommon.WithParams(url.Values{
 			dubboconsts.GROUP_KEY:            []string{req.Service.Group},
 			dubboconsts.ROLE_KEY:             []string{fmt.Sprint(dubbocommon.PROVIDER)},

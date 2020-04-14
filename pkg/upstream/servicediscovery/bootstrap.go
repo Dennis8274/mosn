@@ -34,7 +34,7 @@ func Init( /*port string, dubboLogPath string*/ ) {
 
 	r.Post("/pub", publish)
 	r.Post("/unpub", unpublish)
-	dubbologger.InitLog("./dubbogo.log")
+	_ = dubbologger.InitLog("./dubbogo.log")
 
 	// FIXME make port configurable
 	utils.GoWithRecover(func() {
