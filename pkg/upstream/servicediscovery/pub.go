@@ -2,13 +2,11 @@ package servicediscovery
 
 import (
 	"fmt"
-	dubboregistry "github.com/mosn/registry/dubbo"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
 	zkreg "github.com/mosn/registry/dubbo/zookeeper"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -41,6 +39,7 @@ func publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// init registry
 	reg, err := zkreg.NewZkRegistry(&registryURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "publish fail, err: " + err.Error()})
@@ -64,6 +63,7 @@ func publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// register service provider
 	err = reg.Register(dubboURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "publish fail, err: " + err.Error()})
@@ -78,41 +78,9 @@ func unpublish(w http.ResponseWriter, r *http.Request) {
 	var req unpubReq
 	err := bind(r, &req)
 	if err != nil {
-		_, _ = w.Write([]byte("unpublish fail"))
+		response(w, resp{Errno: fail, ErrMsg: "unpublish fail, err: " + err.Error()})
 		return
 	}
 
-	var (
-		dubboPathInRegistry = fmt.Sprintf("/dubbo/%v.%v/providers", req.Interface, req.Method)
-		registryPath        = fmt.Sprintf("registry://%v", req.RegistryAddr)
-	)
-
-	registryURL, err := dubbocommon.NewURL(registryPath,
-		dubbocommon.WithParamsValue(dubboconsts.ROLE_KEY, strconv.Itoa(dubbocommon.PROVIDER)),
-	)
-	if err != nil {
-		_, _ = w.Write([]byte("unpublish fail" + err.Error()))
-		return
-	}
-
-	reg := dubboregistry.BaseRegistry{
-		URL: &registryURL,
-	}
-
-	url, err := dubbocommon.NewURL(dubboPathInRegistry,
-		dubbocommon.WithParamsValue(dubboconsts.CLUSTER_KEY, "cluster"), // need to read from user config
-		dubbocommon.WithParamsValue("serviceid", req.Interface),
-		dubbocommon.WithMethods([]string{req.Method}))
-	if err != nil {
-		_, _ = w.Write([]byte("unpublish fail" + err.Error()))
-		return
-	}
-
-	err = reg.Register(url)
-	if err != nil {
-		_, _ = w.Write([]byte("publish fail" + err.Error()))
-		return
-	}
-
-	_, _ = w.Write([]byte("unpublish succeed"))
+	response(w, resp{Errno: succ, ErrMsg: "unpublish success"})
 }

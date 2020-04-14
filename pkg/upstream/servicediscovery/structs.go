@@ -17,12 +17,7 @@ type subReq struct {
 	} `json:"service"`
 }
 
-type unsubReq struct {
-	Interface    string `json:"interface" binding:"required"`         // eg. com.mosn.service
-	Method       string `json:"method" binding:"required"`            // eg. GetUser
-	RegistryAddr string `json:"registry_addr" binding:"required"`     // eg. 127.0.0.1:2181
-	RegistryType string `json:"registry_type" binding:"eq=zookeeper"` // zookeeper，etcd，k8s..., currently only zookeeper is supported
-}
+type unsubReq struct {}
 
 type pubReq struct {
 	Registry struct {
@@ -41,15 +36,10 @@ type pubReq struct {
 	} `json:"service"`
 }
 
-type unpubReq struct {
-	Interface    string `json:"interface" binding:"required"`         // eg. com.mosn.service
-	Method       string `json:"method" binding:"required"`            // eg. GetUser
-	RegistryAddr string `json:"registry_addr" binding:"required"`     // eg. 127.0.0.1:2181
-	RegistryType string `json:"registry_type" binding:"eq:zookeeper"` // zookeeper，etcd，k8s..., currently only zookeeper is supported
-}
+type unpubReq struct {}
 
 // response struct for all requests
 type resp struct {
-	Errno  int    `json:"errno"`
+	Errno  int    `json:"err_no"`
 	ErrMsg string `json:"err_msg"`
 }
