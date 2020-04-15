@@ -338,6 +338,10 @@ github.com/mosn/binding v0.0.0-20200413084927-e28f981bfb20 h1:FrqbNnfucsMqmW9HHW
 github.com/mosn/binding v0.0.0-20200413084927-e28f981bfb20/go.mod h1:V3v+y3rlpXDKXBld0Jvz2I3p3gHp8BE6NToiQUuLC7g=
 github.com/mosn/registry v0.0.0-20200413064357-2b3fc75d7153 h1:veIehmW+sKPZPuX+zVpptSxUXbMF9q2CwfGmxSXBcoM=
 github.com/mosn/registry v0.0.0-20200413064357-2b3fc75d7153/go.mod h1:sO2+AtmZqId1+8FHeuSPkPBmuin66YFKuOU3yqh3zGo=
+github.com/mosn/registry v0.0.0-20200415033329-fb7db6641ef6 h1:Kf2IgnsDHX7bYICsp+KI0g4hycPUqg+3JuewTV4dTX4=
+github.com/mosn/registry v0.0.0-20200415033329-fb7db6641ef6/go.mod h1:sO2+AtmZqId1+8FHeuSPkPBmuin66YFKuOU3yqh3zGo=
+github.com/mosn/registry v0.0.0-20200415043435-aa24ab4504fc h1:zqNkPvpBW+gWrQm5Z9Fl9rAD2ppRpivvoc4zy464wgs=
+github.com/mosn/registry v0.0.0-20200415043435-aa24ab4504fc/go.mod h1:sO2+AtmZqId1+8FHeuSPkPBmuin66YFKuOU3yqh3zGo=
 github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nacos-group/nacos-sdk-go v0.0.0-20190723125407-0242d42e3dbb/go.mod h1:CEkSvEpoveoYjA81m4HNeYQ0sge0LFGKSEqO3JKHllo=

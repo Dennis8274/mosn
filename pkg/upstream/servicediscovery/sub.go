@@ -5,13 +5,12 @@ import (
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
 	zkreg "github.com/mosn/registry/dubbo/zookeeper"
-	registry "github.com/mosn/registry/dubbo"
+	"mosn.io/mosn/pkg/log"
+	clusterAdapter "mosn.io/mosn/pkg/upstream/cluster"
 	"net/http"
 	"net/url"
 	"time"
 )
-
-var globalRegistry registry.Registry
 
 // subscribe a service from registry
 func subscribe(w http.ResponseWriter, r *http.Request) {
@@ -38,20 +37,15 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// init registry
-	reg, err := zkreg.NewZkRegistry(&registryURL)
+	// find registry from cache
+	registryCacheKey := req.Service.Interface + "." + req.Service.Name
+	reg ,err := getRegistry(registryCacheKey, registryURL)
 	if err != nil {
-		response(w, resp{ Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
+		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
 	}
 
-	// FIXME temp, init globalRegistry
-	if globalRegistry == nil {
-		globalRegistry = reg
-	}
-
 	var (
-		mosnIP, mosnPort = "127.0.0.1", "20000" // TODO, need to read from mosn config
 		dubboPath        = dubboPathTpl.ExecuteString(map[string]interface{}{
 			"ip":           mosnIP,
 			"port":         mosnPort,
@@ -90,8 +84,20 @@ func unsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	globalRegistry.Destroy()
-	// TODO, remove cluster info in cluster manager
+	// remove all registry cache
+	registryClientCache.Range(func(k, v interface{}) bool {
+		// remove cluster -> host info
+		err := clusterAdapter.GetClusterMngAdapterInstance().RemovePrimaryCluster(k.(string))
+		if err != nil {
+			log.DefaultLogger.Errorf("remove cluster failed, err: %v", err.Error())
+		}
+
+		// destroy registry, stop subscribe
+		r := v.(*zkreg.ZkRegistry)
+		r.Destroy()
+		return true
+	})
+
 	response(w, resp{Errno: succ, ErrMsg: "unsubscribe success"})
 }
 

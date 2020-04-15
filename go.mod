@@ -22,7 +22,7 @@ require (
 	github.com/klauspost/cpuid v1.2.1 // indirect
 	github.com/lyft/protoc-gen-validate v0.0.14
 	github.com/mosn/binding v0.0.0-20200413084927-e28f981bfb20
-	github.com/mosn/registry v0.0.0-20200413064357-2b3fc75d7153
+	github.com/mosn/registry v0.0.0-20200415043435-aa24ab4504fc
 	github.com/neverhook/easygo v0.0.0-20180828090412-787757e64990
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.1.0

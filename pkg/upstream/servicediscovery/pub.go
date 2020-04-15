@@ -4,7 +4,6 @@ import (
 	"fmt"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
-	zkreg "github.com/mosn/registry/dubbo/zookeeper"
 	"net/http"
 	"net/url"
 	"time"
@@ -35,22 +34,22 @@ func publish(w http.ResponseWriter, r *http.Request) {
 		dubbocommon.WithLocation(req.Registry.Addr),
 	)
 	if err != nil {
-		response(w, resp{Errno: fail, ErrMsg: err.Error()})
+		response(w, resp{Errno: fail, ErrMsg: "publish fail, err: " + err.Error()})
 		return
 	}
 
-	// init registry
-	reg, err := zkreg.NewZkRegistry(&registryURL)
+	// find registry from cache
+	registryCacheKey := req.Service.Interface + "." + req.Service.Name
+	reg ,err := getRegistry(registryCacheKey, registryURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "publish fail, err: " + err.Error()})
 		return
 	}
 
 	var (
-		mosnIP, mosnPort = "127.0.0.1", "20000" // TODO, need to read from mosn config
 		dubboPath        = dubboPathTpl.ExecuteString(map[string]interface{}{
 			"ip":           mosnIP,
-			"port":         mosnPort,
+			"port":         fmt.Sprint(mosnPort),
 			"interface":    req.Service.Interface,
 			"service_name": req.Service.Name,
 		})
@@ -82,5 +81,6 @@ func unpublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO, is there need to unpublish?
 	response(w, resp{Errno: succ, ErrMsg: "unpublish success"})
 }
