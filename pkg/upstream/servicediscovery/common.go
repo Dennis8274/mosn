@@ -13,6 +13,7 @@ import (
 var (
 	dubboPathTpl    = fasttemplate.New("dubbo://{{ip}}:{{port}}/{{interface}}.{{service_name}}", "{{", "}}")
 	registryPathTpl = fasttemplate.New("registry://{{addr}}", "{{", "}}")
+	dubboRouterConfigName = "dubbo"
 )
 
 var (

@@ -23,7 +23,6 @@ func (l listener) Notify(event *dubboregistry.ServiceEvent) {
 	children, err := reg.(*zkreg.ZkRegistry).ZkClient().GetChildren(event.Service.Path + "/providers")
 	if err != nil {}
 	*/
-
 	switch event.Action {
 	case remoting.EventTypeAdd:
 		// call the cluster manager to add the host

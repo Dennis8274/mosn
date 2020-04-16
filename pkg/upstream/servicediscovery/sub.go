@@ -5,7 +5,9 @@ import (
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
 	zkreg "github.com/mosn/registry/dubbo/zookeeper"
+	v2 "mosn.io/mosn/pkg/config/v2"
 	"mosn.io/mosn/pkg/log"
+	routerAdapter "mosn.io/mosn/pkg/router"
 	clusterAdapter "mosn.io/mosn/pkg/upstream/cluster"
 	"net/http"
 	"net/url"
@@ -37,16 +39,15 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// find registry from cache
-	registryCacheKey := req.Service.Interface + "." + req.Service.Name
-	reg ,err := getRegistry(registryCacheKey, registryURL)
+	servicePath := req.Service.Interface + "." + req.Service.Name // com.mosn.test.UserService
+	reg, err := getRegistry(servicePath, registryURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
 	}
 
 	var (
-		dubboPath        = dubboPathTpl.ExecuteString(map[string]interface{}{
+		dubboPath = dubboPathTpl.ExecuteString(map[string]interface{}{
 			"ip":           mosnIP,
 			"port":         mosnPort,
 			"interface":    req.Service.Interface,
@@ -57,7 +58,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		dubbocommon.WithParamsValue("timestamp", fmt.Sprint(time.Now().Unix())),
 		dubbocommon.WithMethods(req.Service.Methods))
 	if err != nil {
-		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: "+err.Error()})
+		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
 	}
 
@@ -71,9 +72,30 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	// listen to provider change events
 	go reg.Subscribe(&dubboURL, listener{})
 
+	err = routerAdapter.GetRoutersMangerInstance().AddRoute(dubboRouterConfigName, "*", &v2.Router{
+		RouterConfig: v2.RouterConfig{
+			Match: v2.RouterMatch{
+				Headers: []v2.HeaderMatcher{
+					{
+						Name:  "service", // use the xprotocol header field "service"
+						Value:  servicePath,
+					},
+				},
+			},
+			Route: v2.RouteAction{
+				RouterActionConfig: v2.RouterActionConfig{
+					ClusterName:  servicePath,
+				},
+			},
+		},
+	})
+	if err != nil {
+		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
+		return
+	}
+
 	response(w, resp{Errno: succ, ErrMsg: "subscribe success"})
 }
-
 
 // unsubscribe a service from registry
 func unsubscribe(w http.ResponseWriter, r *http.Request) {
