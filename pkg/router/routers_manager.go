@@ -107,8 +107,11 @@ func (rm *routersManagerImpl) GetRouterWrapperByName(routerConfigName string) ty
 
 // AddRoute adds a single router rule into specified virtualhost(by domain)
 func (rm *routersManagerImpl) AddRoute(routerConfigName, domain string, route *v2.Router) error {
+	fmt.Printf("#######DDD %#v\n", rm.routersWrapperMap)
 	if v, ok := rm.routersWrapperMap.Load(routerConfigName); ok {
 		rw, ok := v.(*RoutersWrapper)
+		fmt.Printf("#######DDD %#v\n", rw)
+		fmt.Printf("#######DDD %#v\n", rw.routers)
 		if !ok {
 			log.DefaultLogger.Errorf(RouterLogFormat, "routers_manager", "AddRoute", "unexpected object in routers map")
 			return ErrUnexpected
@@ -118,7 +121,7 @@ func (rm *routersManagerImpl) AddRoute(routerConfigName, domain string, route *v
 		routers := rw.routers
 		// Stored routers should not be nil when called the api
 		if routers == nil {
-			log.DefaultLogger.Errorf(RouterLogFormat, "routers_manager", "AddRoute", "error: %v", ErrNoRouters)
+			log.DefaultLogger.Errorf(RouterLogFormat, "routers_manager", "AddRoute", "error: "+ ErrNoRouters.Error())
 			return ErrNoRouters
 		}
 		cfg := rw.routersConfig

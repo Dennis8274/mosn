@@ -13,7 +13,7 @@ type subReq struct {
 		Methods   []string `json:"methods" binding:"required"`     // eg. GetUser,GetProfile,UpdateName
 		//Port      string   `json:"port" binding:"max=65535,min=1"` // user service port, eg. 8080
 		Name      string   `json:"name" binding:"required"`        // eg. DemoService
-		Group     string   `json:"group" binding:"required"`
+		Group     string   `json:"group"`// binding:"required"`
 	} `json:"service"`
 }
 
@@ -32,7 +32,7 @@ type pubReq struct {
 		Methods   []string `json:"methods" binding:"required"`     // eg. GetUser,GetProfile,UpdateName
 		//Port      string   `json:"port" binding:"max=65535,min=1"` // user service port, eg. 8080
 		Name      string   `json:"name" binding:"required"`        // eg. DemoService
-		Group     string   `json:"group" binding:"required"`
+		Group     string   `json:"group"`// binding:"required"`
 	} `json:"service"`
 }
 

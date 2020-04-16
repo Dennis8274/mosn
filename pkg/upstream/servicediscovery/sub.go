@@ -11,7 +11,25 @@ import (
 	clusterAdapter "mosn.io/mosn/pkg/upstream/cluster"
 	"net/http"
 	"net/url"
+	"time"
 )
+
+func init() {
+	err := routerAdapter.GetRoutersMangerInstance().AddOrUpdateRouters(&v2.RouterConfiguration{
+		RouterConfigurationConfig: v2.RouterConfigurationConfig{
+			RouterConfigName: dubboRouterConfigName,
+		},
+		VirtualHosts: []*v2.VirtualHost{
+			{
+				Name:    dubboRouterConfigName,
+				Domains: []string{"*"},
+			},
+		},
+	})
+	if err != nil {
+		fmt.Println("fail to init router adapter", err)
+	}
+}
 
 // subscribe a service from registry
 func subscribe(w http.ResponseWriter, r *http.Request) {
@@ -27,11 +45,13 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	})
 	registryURL, err := dubbocommon.NewURL(registryPath,
 		dubbocommon.WithParams(url.Values{
-			dubboconsts.GROUP_KEY:            []string{req.Service.Group},
-			dubboconsts.ROLE_KEY:             []string{fmt.Sprint(dubbocommon.CONSUMER)},
-			dubboconsts.REGISTRY_KEY:         []string{req.Registry.Type},
+			//dubboconsts.GROUP_KEY:            []string{req.Service.Group},
+			//dubboconsts.ROLE_KEY:             []string{fmt.Sprint(dubbocommon.CONSUMER)},
+			//dubboconsts.REGISTRY_KEY:         []string{req.Registry.Type},
 			dubboconsts.REGISTRY_TIMEOUT_KEY: []string{"5s"},
 		}),
+		dubbocommon.WithUsername(req.Registry.UserName),
+		dubbocommon.WithPassword(req.Registry.Password),
 	)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
@@ -39,7 +59,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	servicePath := req.Service.Interface + "." + req.Service.Name // com.mosn.test.UserService
-	reg, err := getRegistry(servicePath, registryURL)
+	reg, err := getRegistry(servicePath, dubbocommon.CONSUMER, registryURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
@@ -55,9 +75,16 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	*/
 	dubboURL := dubbocommon.NewURLWithOptions(
 		dubbocommon.WithPath(servicePath),
-		dubbocommon.WithProtocol("dubbo"),
-		//dubbocommon.WithParamsValue("timestamp", fmt.Sprint(time.Now().Unix())),
+		dubbocommon.WithProtocol("dubbo"), // this protocol is used to compare the url, must provide
+		dubbocommon.WithParams(url.Values{
+			dubboconsts.TIMESTAMP_KEY: []string{fmt.Sprint(time.Now().Unix())},
+			dubboconsts.ROLE_KEY:      []string{fmt.Sprint(dubbocommon.CONSUMER)},
+			//dubboconsts.BEAN_NAME_KEY: []string{req.},
+			dubboconsts.GROUP_KEY:     []string{req.Service.Group},
+			//dubboconsts.INTERFACE_KEY : []string{servicePath},
+		}),
 		dubbocommon.WithMethods(req.Service.Methods))
+	// dubboURL.SubURL = &registryURL
 
 	// register consumer to registry
 	err = reg.Register(*dubboURL)
@@ -67,7 +94,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// listen to provider change events
-	go reg.Subscribe(dubboURL, listener{})
+	go reg.Subscribe(dubboURL, &listener{})
 
 	err = routerAdapter.GetRoutersMangerInstance().AddRoute(dubboRouterConfigName, "*", &v2.Router{
 		RouterConfig: v2.RouterConfig{
@@ -75,13 +102,13 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 				Headers: []v2.HeaderMatcher{
 					{
 						Name:  "service", // use the xprotocol header field "service"
-						Value:  servicePath,
+						Value: servicePath,
 					},
 				},
 			},
 			Route: v2.RouteAction{
 				RouterActionConfig: v2.RouterActionConfig{
-					ClusterName:  servicePath,
+					ClusterName: servicePath,
 				},
 			},
 		},
@@ -90,6 +117,8 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
 	}
+	//fmt.Printf("####$.$$ %#v\n", routerAdapter.GetRoutersMangerInstance())
+	//fmt.Println(routerAdapter.GetRoutersMangerInstance().GetRouterWrapperByName(dubboRouterConfigName))
 
 	response(w, resp{Errno: succ, ErrMsg: "subscribe success"})
 }
