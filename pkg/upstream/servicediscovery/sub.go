@@ -46,15 +46,6 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/*
-	var (
-		dubboPath = dubboPathTpl.ExecuteString(map[string]interface{}{
-			"ip":           mosnIP,
-			"port":         mosnPort,
-			"interface":    req.Service.Interface,
-			"service_name": req.Service.Name,
-		})
-	)
-
 		cfgURL := common.NewURLWithOptions(
 			common.WithPath(c.id),
 			common.WithProtocol(c.Protocol),
@@ -104,6 +95,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 // unsubscribe a service from registry
+// FIXME not supported
 func unsubscribe(w http.ResponseWriter, r *http.Request) {
 	var req unsubReq
 	err := bind(r, &req)

@@ -14,7 +14,7 @@ import (
 var (
 	dubboPathTpl    = fasttemplate.New("dubbo://{{ip}}:{{port}}/{{interface}}.{{service_name}}", "{{", "}}")
 	registryPathTpl = fasttemplate.New("registry://{{addr}}", "{{", "}}")
-	dubboRouterConfigName = "dubbo"
+	dubboRouterConfigName = "dubbo" // keep the same with the router config name in mosn_config.json
 )
 
 var (
@@ -29,7 +29,12 @@ const (
 // /com.test.cch.UserService --> zk client
 var registryClientCache = sync.Map{}
 
-func getRegistry(registryCacheKey string, registryURL dubbocommon.URL) (*zkreg.ZkRegistry, error) {
+func getRegistry(registryCacheKey string, role int, registryURL dubbocommon.URL) (*zkreg.ZkRegistry, error) {
+	// do not cache provider registry, or it may collide with the consumer registry
+	if role == dubbocommon.PROVIDER {
+		return zkreg.NewZkRegistry(&registryURL)
+	}
+
 	regInterface, ok := registryClientCache.Load(registryCacheKey)
 
 	var (
@@ -40,17 +45,15 @@ func getRegistry(registryCacheKey string, registryURL dubbocommon.URL) (*zkreg.Z
 	if !ok {
 		// init registry
 		reg, err = zkreg.NewZkRegistry(&registryURL)
-		if err != nil {
-			return nil, err
-		}
-
 		// store registry object to global cache
-		registryClientCache.Store(registryCacheKey, reg)
+		if err == nil {
+			registryClientCache.Store(registryCacheKey, reg)
+		}
 	} else {
 		reg = regInterface.(*zkreg.ZkRegistry)
 	}
 
-	return reg, nil
+	return reg, err
 }
 
 func response(w http.ResponseWriter, respBody interface{}) {

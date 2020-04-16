@@ -4,7 +4,6 @@ import (
 	"fmt"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
-	zkreg "github.com/mosn/registry/dubbo/zookeeper"
 	"net/http"
 	"net/url"
 	"time"
@@ -40,9 +39,8 @@ func publish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// find registry from cache
-	// registryCacheKey := req.Service.Interface + "." + req.Service.Name
-	// reg ,err := getRegistry(registryCacheKey, registryURL)
-	reg, err := zkreg.NewZkRegistry(&registryURL)
+	registryCacheKey := req.Service.Interface + "." + req.Service.Name
+	reg ,err := getRegistry(registryCacheKey,dubbocommon.PROVIDER, registryURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "publish fail, err: " + err.Error()})
 		return
@@ -75,6 +73,7 @@ func publish(w http.ResponseWriter, r *http.Request) {
 }
 
 // unpublish user service from registry
+// FIXME, not supported
 func unpublish(w http.ResponseWriter, r *http.Request) {
 	var req unpubReq
 	err := bind(r, &req)
@@ -83,6 +82,5 @@ func unpublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO, is there need to unpublish?
 	response(w, resp{Errno: succ, ErrMsg: "unpublish success"})
 }
