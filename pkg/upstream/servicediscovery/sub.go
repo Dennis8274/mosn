@@ -11,7 +11,6 @@ import (
 	clusterAdapter "mosn.io/mosn/pkg/upstream/cluster"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // subscribe a service from registry
@@ -46,6 +45,7 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	/*
 	var (
 		dubboPath = dubboPathTpl.ExecuteString(map[string]interface{}{
 			"ip":           mosnIP,
@@ -54,23 +54,29 @@ func subscribe(w http.ResponseWriter, r *http.Request) {
 			"service_name": req.Service.Name,
 		})
 	)
-	dubboURL, err := dubbocommon.NewURL(dubboPath,
-		dubbocommon.WithParamsValue("timestamp", fmt.Sprint(time.Now().Unix())),
+
+		cfgURL := common.NewURLWithOptions(
+			common.WithPath(c.id),
+			common.WithProtocol(c.Protocol),
+			common.WithParams(c.getUrlMap()),
+			common.WithParamsValue(constant.BEAN_NAME_KEY, c.id),
+		)
+	*/
+	dubboURL := dubbocommon.NewURLWithOptions(
+		dubbocommon.WithPath(servicePath),
+		dubbocommon.WithProtocol("dubbo"),
+		//dubbocommon.WithParamsValue("timestamp", fmt.Sprint(time.Now().Unix())),
 		dubbocommon.WithMethods(req.Service.Methods))
-	if err != nil {
-		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
-		return
-	}
 
 	// register consumer to registry
-	err = reg.Register(dubboURL)
+	err = reg.Register(*dubboURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "subscribe fail, err: " + err.Error()})
 		return
 	}
 
 	// listen to provider change events
-	go reg.Subscribe(&dubboURL, listener{})
+	go reg.Subscribe(dubboURL, listener{})
 
 	err = routerAdapter.GetRoutersMangerInstance().AddRoute(dubboRouterConfigName, "*", &v2.Router{
 		RouterConfig: v2.RouterConfig{

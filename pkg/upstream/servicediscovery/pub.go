@@ -4,6 +4,7 @@ import (
 	"fmt"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	dubboconsts "github.com/mosn/registry/dubbo/common/constant"
+	zkreg "github.com/mosn/registry/dubbo/zookeeper"
 	"net/http"
 	"net/url"
 	"time"
@@ -39,8 +40,9 @@ func publish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// find registry from cache
-	registryCacheKey := req.Service.Interface + "." + req.Service.Name
-	reg ,err := getRegistry(registryCacheKey, registryURL)
+	// registryCacheKey := req.Service.Interface + "." + req.Service.Name
+	// reg ,err := getRegistry(registryCacheKey, registryURL)
+	reg, err := zkreg.NewZkRegistry(&registryURL)
 	if err != nil {
 		response(w, resp{Errno: fail, ErrMsg: "publish fail, err: " + err.Error()})
 		return
@@ -49,7 +51,7 @@ func publish(w http.ResponseWriter, r *http.Request) {
 	var (
 		dubboPath        = dubboPathTpl.ExecuteString(map[string]interface{}{
 			"ip":           mosnIP,
-			"port":         fmt.Sprint(mosnPort),
+			"port":         mosnPort,
 			"interface":    req.Service.Interface,
 			"service_name": req.Service.Name,
 		})

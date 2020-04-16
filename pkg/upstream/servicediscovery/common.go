@@ -2,6 +2,7 @@ package servicediscovery
 
 import (
 	"encoding/json"
+	"fmt"
 	dubbocommon "github.com/mosn/registry/dubbo/common"
 	zkreg "github.com/mosn/registry/dubbo/zookeeper"
 	"github.com/valyala/fasttemplate"
@@ -17,7 +18,7 @@ var (
 )
 
 var (
-	mosnIP, mosnPort = "127.0.0.1", rand.Int63n(30000)+1 // TODO, need to read from mosn config
+	mosnIP, mosnPort = "127.0.0.1", fmt.Sprint(rand.Int63n(30000)+1) // TODO, need to read from mosn config
 )
 
 const (
