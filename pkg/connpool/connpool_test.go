@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package http
+// This TEST file is copied from http/connpool_test.go
+package connpool
 
 import (
 	"context"
-	"fmt"
 	metrics "github.com/rcrowley/go-metrics"
 	v2 "mosn.io/mosn/pkg/config/v2"
 	"mosn.io/mosn/pkg/network"
@@ -109,19 +109,18 @@ func TestGetAvailableClient(t *testing.T) {
 		},
 	}
 	host := cluster.NewSimpleHost(hc, ci)
-	pool := NewConnPool(host).(*connPool)
+	pool := NewConnPool(context.Background(), host)
 
 	wg := sync.WaitGroup{}
 	wg.Add(500)
 	for i := 0; i < 500; i++ {
 		go func() {
-			pool.getAvailableClient(context.Background())
+			pool.GetConn(context.Background())
 			wg.Done()
 		}()
 	}
 	wg.Wait()
-	fmt.Println(pool.totalClientCount, max)
 	if pool.totalClientCount > uint64(max) {
-		t.Fatal("limit max connections failed")
+		t.Fatal("limit max connections failed", pool.totalClientCount, max)
 	}
 }
