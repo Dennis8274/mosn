@@ -47,9 +47,10 @@ type MOSNConfig struct {
 
 // DubboConfig is for dubbo related configs
 type DubboConfig struct {
-	Enable             bool `json:"enable"`
-	ServerListenerPort int  `json:"server_port"` // for server listener, must keep the same with server listener
-	APIPort            int  `json:"api_port"`    // for pub/sub/unpub/unsub api
+	Enable             bool   `json:"enable"`
+	ServerListenerPort int    `json:"server_port"` // for server listener, must keep the same with server listener
+	APIPort            int    `json:"api_port"`    // for pub/sub/unpub/unsub api
+	LogPath            string `json:"log_path"`    // dubbo service discovery log_path
 }
 
 // PProfConfig is used to start a pprof server for debug
