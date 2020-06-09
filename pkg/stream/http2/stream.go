@@ -498,6 +498,66 @@ func (s *serverStream) AppendTrailers(context context.Context, trailers api.Head
 	return nil
 }
 
+// types.StreamSender
+func (s *serverStream) Send(context context.Context, headers api.HeaderMap,data buffer.IoBuffer, trailers api.HeaderMap) error {
+	// header part
+	var rsp *http.Response
+
+	var status int
+	if value, _ := headers.Get(types.HeaderStatus); value != "" {
+		headers.Del(types.HeaderStatus)
+		status, _ = strconv.Atoi(value)
+	} else {
+		status = 200
+	}
+
+	switch header := headers.(type) {
+	case *mhttp2.RspHeader:
+		rsp = header.Rsp
+	case *mhttp2.ReqHeader:
+		// indicates the invocation is under hijack scene
+		rsp = new(http.Response)
+		rsp.StatusCode = status
+		rsp.Header = s.h2s.Request.Header
+	default:
+		rsp = new(http.Response)
+		rsp.StatusCode = status
+		rsp.Header = mhttp2.EncodeHeader(headers)
+	}
+
+	s.h2s.Response = rsp
+
+	if log.Proxy.GetLogLevel() >= log.DEBUG {
+		log.Proxy.Debugf(s.ctx, "http2 server ApppendHeaders id = %d, headers = %+v", s.id, rsp.Header)
+	}
+
+	// data part
+	if data != nil {
+		s.h2s.SendData = data
+		if log.Proxy.GetLogLevel() >= log.DEBUG {
+			log.Proxy.Debugf(s.ctx, "http2 server ApppendData id = %d", s.id)
+		}
+	}
+
+	// trailers part
+	if trailers != nil {
+		switch trailer := trailers.(type) {
+		case *mhttp2.HeaderMap:
+			s.h2s.Trailer = &trailer.H
+		default:
+			header := mhttp2.EncodeHeader(trailer)
+			s.h2s.Trailer = &header
+		}
+		if log.Proxy.GetLogLevel() >= log.DEBUG {
+			log.Proxy.Debugf(s.ctx, "http2 server ApppendTrailers id = %d, trailer = %+v", s.id, s.h2s.Trailer)
+		}
+	}
+
+	s.endStream()
+	return nil
+}
+
+
 func (s *serverStream) ResetStream(reason types.StreamResetReason) {
 	// on stream reset
 	log.Proxy.Warnf(s.ctx, "http2 server reset stream id = %d, error = %v", s.id, reason)
@@ -889,6 +949,7 @@ func (s *clientStream) AppendData(context context.Context, data buffer.IoBuffer,
 	return nil
 }
 
+// types.StreamSender
 func (s *clientStream) AppendTrailers(context context.Context, trailers api.HeaderMap) error {
 	switch trailer := trailers.(type) {
 	case *mhttp2.HeaderMap:
@@ -900,6 +961,106 @@ func (s *clientStream) AppendTrailers(context context.Context, trailers api.Head
 	if log.Proxy.GetLogLevel() >= log.DEBUG {
 		log.Proxy.Debugf(s.ctx, "http2 client AppendTrailers: id = %d, trailer = %+v", s.id, s.h2s.Trailer)
 	}
+	s.endStream()
+
+	return nil
+}
+
+// types.StreamSender
+func (s *clientStream) Send(context context.Context, headersIn api.HeaderMap, data buffer.IoBuffer, trailers api.HeaderMap) error {
+
+	var req *http.Request
+	var isReqHeader bool
+
+	// clone for retry
+	headersIn = headersIn.Clone()
+	switch header := headersIn.(type) {
+	case *mhttp2.ReqHeader:
+		req = header.Req
+		isReqHeader = true
+	default:
+		req = new(http.Request)
+	}
+
+	scheme := "http"
+	if _, ok := s.conn.RawConn().(*mtls.TLSConn); ok {
+		scheme = "https"
+	}
+
+	var method string
+	if m, ok := headersIn.Get(protocol.MosnHeaderMethod); ok {
+		headersIn.Del(protocol.MosnHeaderMethod)
+		method = m
+	} else {
+		if data == nil {
+			method = http.MethodGet
+		} else {
+			method = http.MethodPost
+		}
+	}
+
+	var host string
+	if h, ok := headersIn.Get(protocol.MosnHeaderHostKey); ok {
+		headersIn.Del(protocol.MosnHeaderHostKey)
+		host = h
+	} else if h, ok := headersIn.Get("Host"); ok {
+		host = h
+	} else {
+		host = s.conn.RemoteAddr().String()
+	}
+
+	var query string
+	if q, ok := headersIn.Get(protocol.MosnHeaderQueryStringKey); ok {
+		headersIn.Del(protocol.MosnHeaderQueryStringKey)
+		query = q
+	}
+
+	var URL *url.URL
+	if path, ok := headersIn.Get(protocol.MosnHeaderPathKey); ok {
+		headersIn.Del(protocol.MosnHeaderPathKey)
+		if query != "" {
+			URI := fmt.Sprintf(scheme+"://%s%s?%s", req.Host, path, query)
+			URL, _ = url.Parse(URI)
+		} else {
+			URI := fmt.Sprintf(scheme+"://%s%s", req.Host, path)
+			URL, _ = url.Parse(URI)
+		}
+	} else {
+		URI := fmt.Sprintf(scheme+"://%s/", req.Host)
+		URL, _ = url.Parse(URI)
+	}
+
+	if !isReqHeader {
+		req.Method = method
+		req.Host = host
+		req.URL = URL
+		req.Header = mhttp2.EncodeHeader(headersIn)
+	}
+
+	if log.Proxy.GetLogLevel() >= log.DEBUG {
+		log.Proxy.Debugf(s.ctx, "http2 client AppendHeaders: id = %d, headers = %+v", s.id, req.Header)
+	}
+
+	s.h2s = http2.NewMClientStream(s.sc.mClientConn, req)
+	s.h2s.UseStream = s.sc.useStream
+	s.h2s.SendData = data
+	if log.Proxy.GetLogLevel() >= log.DEBUG {
+		log.Proxy.Debugf(s.ctx, "http2 client AppendData: id = %d", s.id)
+	}
+
+	if trailers != nil {
+		switch trailer := trailers.(type) {
+		case *mhttp2.HeaderMap:
+			s.h2s.Trailer = &trailer.H
+		default:
+			header := mhttp2.EncodeHeader(trailer)
+			s.h2s.Trailer = &header
+		}
+		if log.Proxy.GetLogLevel() >= log.DEBUG {
+			log.Proxy.Debugf(s.ctx, "http2 client AppendTrailers: id = %d, trailer = %+v", s.id, s.h2s.Trailer)
+		}
+	}
+
 	s.endStream()
 
 	return nil

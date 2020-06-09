@@ -155,6 +155,9 @@ type StreamSender interface {
 	// Append trailers, implicitly ends the stream.
 	AppendTrailers(ctx context.Context, trailers api.HeaderMap) error
 
+	// Send header, data and trailers
+	Send(context context.Context,headers HeaderMap, data IoBuffer, trailers HeaderMap) error
+
 	// Get related stream
 	GetStream() Stream
 }

@@ -146,6 +146,13 @@ func (s *mockResponseSender) AppendTrailers(ctx context.Context, trailers types.
 	return nil
 }
 
+func (s *mockResponseSender) Send(ctx context.Context, headers api.HeaderMap, data types.IoBuffer, trailers types.HeaderMap) error {
+	s.headers = headers
+	s.data = data
+	s.trailers = trailers
+	return nil
+}
+
 func (s *mockResponseSender) GetStream() types.Stream {
 	return &mockStream{}
 }

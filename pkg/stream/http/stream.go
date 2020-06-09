@@ -571,7 +571,41 @@ func (s *clientStream) AppendData(context context.Context, data buffer.IoBuffer,
 	return nil
 }
 
+// ~ types.StreamSender
 func (s *clientStream) AppendTrailers(context context.Context, trailers types.HeaderMap) error {
+	s.endStream()
+	return nil
+}
+
+// types.StreamSender
+func (s *clientStream) Send(ctx context.Context, headersIn types.HeaderMap, data buffer.IoBuffer, trailers types.HeaderMap) error {
+
+	// clone for retry case
+	headers := headersIn.Clone().(mosnhttp.RequestHeader)
+
+	// FIXME
+	// TODO: protocol convert in pkg/protocol
+	//if the request contains body, use "POST" as default, the http request method will be setted by MosnHeaderMethod
+	if data == nil {
+		headers.SetMethod(http.MethodGet)
+	} else {
+		headers.SetMethod(http.MethodPost)
+	}
+
+	// clear 'Connection:close' header for keepalive connection with upstream
+	if headers.ConnectionClose() {
+		headers.Del("Connection")
+	}
+
+	removeInternalHeaders(headers, s.connection.conn.RemoteAddr())
+
+	// copy headers
+	headers.CopyTo(&s.request.Header)
+
+	if data != nil {
+		s.request.SetBody(data.Bytes())
+	}
+
 	s.endStream()
 	return nil
 }
@@ -703,6 +737,44 @@ func (s *serverStream) AppendData(context context.Context, data buffer.IoBuffer,
 }
 
 func (s *serverStream) AppendTrailers(context context.Context, trailers types.HeaderMap) error {
+	s.endStream()
+	return nil
+}
+
+
+// types.StreamSender
+func (s *serverStream) Send(context context.Context,headersIn types.HeaderMap, data buffer.IoBuffer, trailers types.HeaderMap) error {
+	switch headers := headersIn.(type) {
+	case mosnhttp.RequestHeader:
+		// hijack scene
+		if status, ok := headers.Get(types.HeaderStatus); ok {
+			headers.Del(types.HeaderStatus)
+
+			statusCode, _ := strconv.Atoi(status)
+			s.response.SetStatusCode(statusCode)
+
+			removeInternalHeaders(headers, s.connection.conn.RemoteAddr())
+
+			// need to echo all request headers for protocol convert
+			headers.VisitAll(func(key, value []byte) {
+				s.response.Header.SetBytesKV(key, value)
+			})
+		}
+	case mosnhttp.ResponseHeader:
+		if status, ok := headers.Get(types.HeaderStatus); ok {
+			headers.Del(types.HeaderStatus)
+
+			statusCode, _ := strconv.Atoi(status)
+			headers.SetStatusCode(statusCode)
+		}
+
+		headers.CopyTo(&s.response.Header)
+	}
+
+	if data != nil {
+		s.response.SetBody(data.Bytes())
+	}
+
 	s.endStream()
 	return nil
 }

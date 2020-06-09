@@ -111,6 +111,43 @@ func (s *xStream) AppendTrailers(context context.Context, trailers types.HeaderM
 	return nil
 }
 
+// types.StreamSender
+func (s *xStream) Send(context context.Context,headers types.HeaderMap, data types.IoBuffer, trailers types.HeaderMap) error {
+	// header part
+	if log.Proxy.GetLogLevel() >= log.DEBUG {
+		log.Proxy.Debugf(s.ctx, "[stream] [xprotocol] appendHeaders, direction = %d, requestId = %d", s.direction, s.id)
+	}
+	var err error
+	// type assertion
+	frame, ok := headers.(xprotocol.XFrame)
+	if !ok {
+		return fmt.Errorf("headers %T is not a XFrame instance", headers)
+	}
+
+	// hijack process
+	if s.direction == stream.ServerStream && frame.GetStreamType() == xprotocol.Request {
+		s.frame, err = s.buildHijackResp(headers)
+		if err != nil {
+			return err
+		}
+	} else {
+		s.frame = frame
+	}
+
+	// data part
+	if data != nil {
+		if log.Proxy.GetLogLevel() >= log.DEBUG {
+			log.Proxy.Debugf(s.ctx, "[stream] [xprotocol] appendData, direction = %d, requestId = %d", s.direction, s.id)
+		}
+
+		s.frame.SetData(data)
+	}
+
+	s.endStream()
+
+	return nil
+}
+
 // Flush stream data
 // For server stream, write out response
 // For client stream, write out request
