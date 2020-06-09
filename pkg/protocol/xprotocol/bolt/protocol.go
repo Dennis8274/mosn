@@ -136,7 +136,7 @@ func (proto *boltProtocol) Reply(request xprotocol.XFrame) xprotocol.XRespFrame 
 }
 
 // Hijacker
-func (proto *boltProtocol) Hijack(statusCode uint32) xprotocol.XRespFrame {
+func (proto *boltProtocol) Hijack(statusCode uint32, _ xprotocol.XFrame) xprotocol.XRespFrame {
 	return &Response{
 		ResponseHeader: ResponseHeader{
 			Protocol:       ProtocolCode,

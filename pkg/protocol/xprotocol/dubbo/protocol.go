@@ -110,7 +110,7 @@ func (proto *dubboProtocol) Reply(request xprotocol.XFrame) xprotocol.XRespFrame
 }
 
 // hijacker
-func (proto *dubboProtocol) Hijack(statusCode uint32) xprotocol.XRespFrame {
+func (proto *dubboProtocol) Hijack(statusCode uint32, _ xprotocol.XFrame) xprotocol.XRespFrame {
 	// not support
 	return nil
 }

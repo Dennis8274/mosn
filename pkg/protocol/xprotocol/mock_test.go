@@ -50,7 +50,7 @@ func (mp *mockProtocol) Reply(request XFrame) XRespFrame {
 }
 
 // Hijacker
-func (mp *mockProtocol) Hijack(statusCode uint32) XRespFrame {
+func (mp *mockProtocol) Hijack(statusCode uint32, _ XFrame) XRespFrame {
 	return nil
 }
 
@@ -61,7 +61,6 @@ func (mp *mockProtocol) Mapping(httpStatusCode uint32) uint32 {
 func (mp *mockProtocol) PoolMode() types.PoolMode {
 	return types.Multiplex
 }
-
 
 func mockMatcher(data []byte) types.MatchResult {
 	return types.MatchSuccess
